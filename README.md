@@ -1,24 +1,51 @@
-# Xash3D FWGS Engine [![Build Status](https://travis-ci.org/FWGS/xash3d.svg)](https://travis-ci.org/FWGS/xash3d) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/FWGS/xash3d?svg=true)](https://ci.appveyor.com/project/a1batross/xash3d)
+# xash3D-strobe
 
-Latest version of the engine is available at:
-https://github.com/FWGS/xash3d
+![sample-strobe-screenshot](https://vgy.me/Tdf4gZ.png)
 
-Orignal project: [Xash3D on ModDB](http://www.moddb.com/engines/xash3d-engine)
+### How to hook a StrobeAPI derived work (StrobeAPI implementation) into xash3d ?
 
-Xash3D Engine is a custom Gold Source engine rewritten from scratch. Xash3D
-is compatible with many of the Gold Source games and mods and should be
-able to run almost any existing singleplayer Half-Life mod without a hitch.
-The multiplayer part is not yet completed, multiplayer mods should work just
-fine, but bear in mind that some features may not work at all or work not
-exactly the way they do in Gold Source Engine.
+ - in **cl_view.c** *V_PostRender* function, this part can be modified:
+   
+       #ifdef STROBE_ENABLED
+       		// if ( STROBE_TEMPLATE )
+       		//  STROBE_TEMPLATE->STROBE_IMPL_FUNC_DEBUGHANDLER( &STROBE_TEMPLATE );
+       		if ( STROBE_CORE )
+       			STROBE_CORE->STROBE_IMPL_FUNC_DEBUGHANDLER( &STROBE_CORE );
+       #endif 
+      Debug handling function (printing informative strobe debugging text output from StrobeAPI) of your Strobe implementation can be called here.
 
-Xash3D FWGS is a fork of Xash3D Engine, which aims on crossplatform and compability 
-with original Xash3D and Gold Source.
+ - in **gl_rmain.c** *R_EndFrame* function, this part can be modified:
+   
+       #ifdef STROBE_ENABLED
+       // StrobeAPI.Invoker( STROBE_INVOKE(STROBE_TEMPLATE) );
+       StrobeAPI.Invoker( STROBE_INVOKE(STROBE_CORE) );
+       #else
+  - Check **r_strobe_template.c.TEMPLATE** and **r_strobe_template.h.TEMPLATE** files. They are templates for creating a new StrobeAPI implementation. They can be used as a base and for actual implementation Strobe-Core (r_strobe_core.h and r_strobe_core.c) can be inspected.
 
-- [Building and running Xash3D FWGS](https://github.com/FWGS/xash3d/wiki/Building-and-running)
-- [Installing and setting up the server on Debian/Ubuntu Linux](https://github.com/FWGS/xash3d/wiki/How-to-set-up-a-Xash3D-Dedicated-Server-on-Debian-Ubuntu-Linux)
+### How StrobeAPI and StrobeAPI implementations exposed to xash3d ?
 
-# License
+ - A structure which contains console variables and Invoker, Constructor and Destructor functions are exposed through "StrobeAPI" instance of the structure.
+ - R_InitStrobeAPI( ) from StrobeAPI for registering console variables is exposed.
+ - Constructor, destructor, reinit, main functions from StrobeAPI implementations are exposed while being guarded by StrobeAPI macros.
+ - Bunch of macros starting with STROBE or _STROBE from StrobeAPI are exposed.
+ - Bunch of structures starting with STROBE or StrobeAPI_ from StrobeAPI are exposed.
+ - An implementation structure and its instance from StrobeAPI implementation are exposed while being guarded by StrobeAPI macros.
+ - StrobeAPI and StrobeAPI implementation generic functions and private variables etc. are NOT exposed.
+ - Contents of r_strobe_api_protected_.h are not exposed.
+ - If STROBE_DISABLED is defined, nothing is exposed.
+
+### Console variables
+
+ - **r_strobe** : For setting Strobe method. 1: NORMAL - BLACK , 2 : NORMAL - BLACK - BLACK, -3: BLACK - BLACK - BLACK - NORMAL . Set 0 to disable strobing.
+ - **r_strobe_swapinterval** : For setting phase swap interval of Strobing. (in seconds). May cause image retention if set to 0 in some monitors (0 disables phase swapping).
+ - **r_strobe_debug** : For informing StrobeAPI instance to do something with StrobeAPI informative debug output text. Strobe-Core implementation shows the output text in right-up corner of the screen. (0 or 1)
+ - **r_strobe_cooldown** : When standard deviation of collected FPS values in a certain time period exceeds the determined limit, strobing gets disabled for a time period. This cvar sets the time period of how long strobing is disabled when there is instability. Should be set 0 to disable instability induced strobing cooldown.
+ - deviation limit (not implemented): Standard deviation limit of FPS values collected in a time period.
+ - count of collected fps values (not implemented): How many FPS values should be collected before calculating standard deviation.
+
+These variables are common in all StrobeAPI implementations because they are defined in StrobeAPI. In future these variables should be defined in implementations instead of StrobeAPI.
+
+### License
 
 The library is licensed under GPLv3 license, see [COPYING](https://github.com/FWGS/xash3d/blob/master/COPYING) for details.
 CMakeLists.txt files are licensed under MIT license, you will find it's text
